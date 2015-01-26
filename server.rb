@@ -11,22 +11,45 @@ loop do                                             # Server runs forever
   client = server.accept                            # Wait for a client to connect. Accept returns a TCPSocket
 
   lines = []
-  while (line = client.gets.chomp)   # Read the request and collect it until it's empty
+  while (line = client.gets.chomp)  				# Read the request and collect it until it's empty
     break if line.empty?
 	lines << line
   end
 
 
-  puts lines            
+  puts lines.inspect            
 
   filename = lines[0].gsub(/GET \//, '').gsub(/\ HTTP.*/, '')
 	response_body = nil
+	headers = []
+
+	
 	if File.exists?(filename)
 	  response_body = File.read(filename)
-	else
-	  response_body = "File Not Found\n" 				# need to indicate end of the string with \n
-	end                           						 # Output the full request to stdout
+	  	headers << "HTTP/1.1 200 OK"
 
-  client.puts(response_body)                       # Output the current time to the client
+	  	if filename =~ /.css/
+	  		content_type = "text/css"
+	  	elsif filename =~ /.html/
+	  		content_type = "text/html"
+	  	else 
+	  		content_type = "text/plain"
+	  	end
+		headers << "Content type: #{content_type}"
+	else
+	  response_body = "File Not Found\n" 
+	  	headers << "HTTP/1.1 404 Not Found"
+	  	headers << "Content-Type: text/plain" 									# need to indicate end of the string with \n
+	end                           						 # Output the full request to stdout
+		headers << "Content-Length: #{response_body.length}"
+		headers << "Connection: close"
+		headers = headers.join("\r\n")
+
+	response = [headers, response_body].join("\r\n\r\n")
+
+
+  client.puts(response)
+  puts headers
+                         # Output the current time to the client
   client.close                                      # Disconnect from the client
 end
